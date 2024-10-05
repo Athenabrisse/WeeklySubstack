@@ -4,38 +4,6 @@ import yaml
 import logging
 from email.header import decode_header
 import datetime
-
-IMAP_SERVER = 'imap.gmail.com'  # Replace with your IMAP server
-IMAP_PORT = 993  # IMAP SSL port
-
-def load_credentials(filepath='credentials.yaml'):
-    try:
-        with open(filepath, 'r') as file:
-            credentials = yaml.safe_load(file)
-            user = credentials['user']
-            password = credentials['password']
-            return user, password
-    except Exception as e:
-        logging.error("Failed to load credentials: {}".format(e))
-        raise
-
-def connect_to_gmail_imap(user, password):
-    imap_url = 'imap.gmail.com'
-    try:
-        mail = imaplib.IMAP4_SSL(imap_url)
-        mail.login(user, password)
-        mail.select('inbox')  # Connect to the inbox.
-        return mail
-    except Exception as e:
-        logging.error("Connection failed: {}".format(e))
-        raise
-
-import imaplib
-import email
-import yaml
-import logging
-from email.header import decode_header
-import datetime
 import json
 
 IMAP_SERVER = 'imap.gmail.com'  # Replace with your IMAP server
@@ -129,15 +97,10 @@ def save_emails_to_json(email_data, output_filepath='emails.json'):
     with open(output_filepath, 'w') as json_file:
         json.dump(email_data, json_file, indent=4)
 
-def main():
+def get_email():
     # Load credentials
     user, password = load_credentials('credentials.yaml')
     # Connect to the Gmail IMAP server
     mail = connect_to_gmail_imap(user, password)
     # Get last week's emails
-    email_data = get_last_week_emails(mail)
-    # Save the emails to a JSON file
-    save_emails_to_json(email_data)
-
-if __name__ == "__main__":
-    main()
+    return get_last_week_emails(mail)
