@@ -5,6 +5,7 @@ import logging
 from email.header import decode_header
 import datetime
 import json
+import re
 
 IMAP_SERVER = 'imap.gmail.com'  # Replace with your IMAP server
 IMAP_PORT = 993  # IMAP SSL port
@@ -28,6 +29,14 @@ def connect_to_gmail_imap(user, password):
     # Select the mailbox you want to check (INBOX by default)
     mail.select('inbox')
     return mail
+
+
+def remove_links(text):
+    # Regular expression to detect links
+    #regex = r'https?://\S+|www\.\S+'
+    regex = r'<https?://\S+>|https?://\S+|<www\.\S+>|www\.\S+'
+
+    return re.sub(regex, '', text)
 
 def get_last_week_emails(mail):
     # Calculate the date for one week ago in the format `DD-Month-YYYY`
@@ -78,7 +87,10 @@ def get_last_week_emails(mail):
                 else:
                     # If the email is not multipart
                     body = msg.get_payload(decode=True).decode()
-                
+
+                # Remove links from the body
+                body = remove_links(body)
+
                 # Add the email data to the list
                 email_data.append({
                     "from": from_,

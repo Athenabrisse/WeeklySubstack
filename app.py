@@ -4,9 +4,84 @@ from unidecode import unidecode
 import base64
 from PyPDF2 import PdfMerger
 from io import BytesIO
+from get_mails import get_email
+import re
+
+
+
+def process_body(body_text : str):
+    # Étape 2: Supprimer tout le texte avant et y compris "Forwarded this email? Subscribe here for more *"
+    #pattern = r"Forwarded this email\?"
+    pattern = r"\*"
+
+    cleaned_body = re.split(pattern, body_text, flags=re.IGNORECASE)
+    
+    if len(cleaned_body) < 2:
+        st.write("motif non trouvé")
+        # Si le motif n'est pas trouvé, retourner le texte original
+        cleaned_body = [body_text]
+    else:
+        abstract = cleaned_body[1]  # Prendre la partie après le motif
+        articles = cleaned_body[2]
+    #cleaned_body = cleaned_body.strip()
+
+    # Étape 3: Séparer l'Abstract et l'Article à partir du séparateur "------------------------------"
+    separator = "------------------------------"
+    parts = re.split(separator, articles, flags=re.IGNORECASE)
+    if len(parts) >= 2:
+        article = parts[1]
+
+    RIAseparator = "READ IN APP"
+    articleparts = re.split(RIAseparator, article, flags=re.IGNORECASE)
+    if len(articleparts) >= 2:
+        article = articleparts[1]
+
+    return abstract, article
+
+
+# Fonction pour créer un PDF formaté pour une newsletter
+def create_newsletter_pdf(email_json : str):
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Nettoyer le texte pour éviter les problèmes d'encodage
+    clean_body = unidecode(email_json)
+
+    # Traiter le "body" pour obtenir l'abstract et l'article
+    abstract, article = process_body(clean_body)
+
+    # Configurer la police
+    pdf.set_font("Arial", 'B', 16)
+    pdf.set_text_color(0, 0, 0)  # Noir
+
+    # Ajouter le Titre
+    pdf.cell(0, 10, clean_body.upper(), ln=True, align='C')
+    pdf.ln(5)  # Ajouter un espace
+
+    # Ajouter l'Abstract
+    if abstract:
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_text_color(50, 50, 50)  # Gris foncé
+        pdf.cell(0, 10, "Abstract", ln=True, align='L')
+        pdf.set_font("Arial", size=12)
+        pdf.set_text_color(0, 0, 0)  # Noir
+        pdf.multi_cell(0, 6, abstract)
+        pdf.ln(5)  # Ajouter un espace
+
+    # Ajouter l'Article
+    if article:
+        pdf.set_font("Arial", 'B', 14)
+        pdf.set_text_color(50, 50, 50)  # Gris foncé
+        pdf.cell(0, 10, "Article", ln=True, align='L')
+        pdf.set_font("Arial", size=12)
+        pdf.set_text_color(0, 0, 0)  # Noir
+        pdf.multi_cell(0, 6, article)
+
+    return pdf
+
 
 # Function to create a single formatted PDF for one newsletter
-def create_newsletter_pdf(newsletter_text):
+def create_newsletter_pdf_formatted(newsletter_text):
     pdf = FPDF()
     pdf.add_page()
     
@@ -24,69 +99,71 @@ def create_newsletter_pdf(newsletter_text):
     quote = lines[2]  # Quote
     author_date = lines[3]  # Author and date
     body_text = '\n'.join(lines[4:])  # Body text (all remaining lines)
-    
+        
     # Main title - large, bold, centered
     pdf.set_font("Arial", 'B', 12)
     pdf.set_text_color(105, 105, 105)  # Dark gray (RGB)
     pdf.cell(0, 15, unidecode(title).upper(), ln=True, align='L')
-    
-    # Add space after the title
-    pdf.ln(5)
-    
+
     # Subtitle - smaller, bold, left-aligned
     pdf.set_font("Arial", 'B', 20)
     pdf.set_text_color(0, 0, 0)  # Black
-    pdf.cell(0, 10, subtitle, ln=True, align='L')
-    
-    # Add space after the subtitle
-    pdf.ln(10)
-    
+    pdf.cell(0, 10, unidecode(subtitle), ln=True, align='L')  # Appliquer unidecode
+
     # Quote - italic, framed
     pdf.set_font("Arial", 'I', 14)
     pdf.set_text_color(105, 105, 105)  # Dark gray (RGB)
-    pdf.multi_cell(0, 10, quote, border=1, align='C')
-    
-    # Add space after the quote
-    pdf.ln(10)
-    
+    pdf.multi_cell(0, 10, unidecode(quote), border=1, align='C')  # Appliquer unidecode
+
     # Author and date - small, italic, right-aligned
     pdf.set_font("Arial", 'I', 12)
     pdf.set_text_color(0, 0, 0)  # Black
-    pdf.cell(0, 10, author_date, ln=True, align='R')
+    pdf.cell(0, 10, unidecode(author_date), ln=True, align='R')  # Appliquer unidecode
     
-    # Add space after the author and date
-    pdf.ln(10)
-    
-    # Body text - centered
+    return pdf
+
+def create_newsletter_pdf_Athena(newsletter_text):
+    pdf = FPDF()
+    pdf.add_page()
+
+    clean_text = unidecode(newsletter_text)
+
     pdf.set_font("Arial", size=12)
-    pdf.set_text_color(0, 0, 0)  # Black
-    pdf.multi_cell(0, 8, unidecode(body_text), align='C')
+    pdf.set_text_color(0,0,0)
+
+    pdf.multi_cell(0, 6, clean_text, align='L')
     
     return pdf
 
 # Streamlit app title
 st.title("Générateur de PDF pour Newsletter")
 
-# Initialize session state for newsletters
+
+# Initialiser l'état de session pour les newsletters
 if 'newsletters' not in st.session_state:
     st.session_state['newsletters'] = []
 
-# Text area for user input
-newsletter_text = st.text_area("Entrez le contenu de votre newsletter :")
+# Bouton pour récupérer les emails et les traiter
+if st.button("Mail"):
+    mails = get_email()
+    #st.write(mails)  # Optionnel : Afficher les mails récupérés pour le débogage
+    
+    # Traiter les mails et extraire le texte du corps
+    for mail in mails:
+        body = mail.get('body', '')
+        if body.strip():
+            st.session_state['newsletters'].append(body.strip())
+    st.success(f"{len(mails)} newsletters ont été ajoutées à partir des emails.")
 
-# Button to add the newsletter to session state
-if st.button("Ajouter la Newsletter"):
-    if newsletter_text.strip():  # Add only if text is not empty
-        st.session_state['newsletters'].append(newsletter_text.strip())
-        st.success("Newsletter ajoutée !")
-    else:
-        st.warning("Veuillez entrer le contenu de la newsletter avant d'ajouter.")
-
-# Display all added newsletters
+# Afficher toutes les newsletters ajoutées
 if st.session_state['newsletters']:
-    st.subheader("Newsletters ajoutées:")
+    st.subheader("Newsletters ajoutées :")
     for i, newsletter in enumerate(st.session_state['newsletters']):
-        st.markdown(f"**Newsletter {i+1}:** {newsletter[:100]}...")  # Display first 100 characters
+        st.markdown(f"**Newsletter {i+1} :** {newsletter[:100]}...")  # Afficher les 100 premiers caractères
+        
+        #subject = newsletter.get('subject', 'Sans Sujet')
+        #st.markdown(f"**Newsletter {i+1} :** {subject}...")  
+
 
 # Button to generate and download the combined PDF
 if st.button("Générer le PDF combiné"):
@@ -96,10 +173,12 @@ if st.button("Générer le PDF combiné"):
 
         # Create a PDF for each newsletter
         for idx, newsletter_text in enumerate(st.session_state['newsletters']):
+            #st.write(newsletter_text)
             pdf = create_newsletter_pdf(newsletter_text)
             if pdf is not None:
                 # Get PDF content as bytes
-                pdf_bytes = pdf.output(dest='S').encode('latin1')
+                #pdf_bytes = pdf.output(dest='S').encode('latin1')
+                pdf_bytes = pdf.output(dest='S').encode('latin1', 'ignore')
                 pdf_output = BytesIO(pdf_bytes)
                 pdf_output.seek(0)  # Ensure we're at the start of the BytesIO object
                 all_pdfs.append(pdf_output)
@@ -133,6 +212,7 @@ if st.button("Générer le PDF combiné"):
                 file_name="newsletter_combined.pdf",
                 mime="application/pdf"
             )
+
         else:
             st.error("Aucun PDF valide à combiner.")
     else:
