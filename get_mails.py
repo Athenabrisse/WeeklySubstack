@@ -6,6 +6,7 @@ from email.header import decode_header
 import datetime
 import json
 import re
+from bs4 import BeautifulSoup
 
 IMAP_SERVER = 'imap.gmail.com'  # Replace with your IMAP server
 IMAP_PORT = 993  # IMAP SSL port
@@ -26,8 +27,10 @@ def connect_to_gmail_imap(user, password):
     mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
     # Login to your account
     mail.login(user, password)
+
     # Select the mailbox you want to check (INBOX by default)
     mail.select('inbox')
+    
     return mail
 
 
@@ -39,7 +42,7 @@ def remove_links(text):
     return re.sub(regex, '', text)
 
 def get_last_week_emails(mail):
-    # Calculate the date for one week ago in the format `DD-Month-YYYY`
+    # Calculate the date for one week ago in the format DD-Month-YYYY
     last_week_date = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime('%d-%b-%Y')
 
     # Search for emails from the last week
@@ -84,6 +87,15 @@ def get_last_week_emails(mail):
                         if content_type == "text/plain" and "attachment" not in content_disposition:
                             body = body_part
                             break  # Only store plain text content
+
+                        # if content_type == "text/html" and "attachment" not in content_disposition:
+                        #     html_content = part.get_payload(decode=True).decode()
+                        #     soup = BeautifulSoup(html_content, 'html.parser')
+                        #     img_tags = soup.find_all('img')
+                        #     for img in img_tags:
+                        #         img_url = img.get('src')
+                        #         print(img_url)
+
                 else:
                     # If the email is not multipart
                     body = msg.get_payload(decode=True).decode()
