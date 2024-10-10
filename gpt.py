@@ -1,5 +1,7 @@
 from openai import OpenAI
 import yaml
+from get_mails import get_email
+import json
 
 with open('credentials.yaml', 'r') as file:
     credentials = yaml.safe_load(file)
@@ -16,7 +18,8 @@ def get_gpt4_response(prompt):
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        response_format={ "type": "json_object" },
     )
     
     # Extract the response text
@@ -31,7 +34,14 @@ def get_gpt4_response(prompt):
     
     return completion_text
     
+mails = get_email()
 
-text_test =1000*"Ceci est une phrase de test de quelques mots"
-print(len(text_test))
-print(get_gpt4_response(text_test))
+text_test =f"""Donne moi un json contenant les trois thèmes principaux abordés dans ces newsletters :{mails}.
+Le json contiendra une clé "themes" qui contiendra une liste de 3 strings qui correspondent aux themes."""
+
+ans = get_gpt4_response(text_test)
+
+themes = json.loads(ans)['themes']
+
+for i,theme in enumerate(themes):
+    print(f'Theme {i+1}: {theme}')

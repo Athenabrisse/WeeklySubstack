@@ -6,7 +6,6 @@ from email.header import decode_header
 import datetime
 import json
 import re
-from bs4 import BeautifulSoup
 
 IMAP_SERVER = 'imap.gmail.com'  # Replace with your IMAP server
 IMAP_PORT = 993  # IMAP SSL port
@@ -87,15 +86,6 @@ def get_last_week_emails(mail):
                         if content_type == "text/plain" and "attachment" not in content_disposition:
                             body = body_part
                             break  # Only store plain text content
-
-                        # if content_type == "text/html" and "attachment" not in content_disposition:
-                        #     html_content = part.get_payload(decode=True).decode()
-                        #     soup = BeautifulSoup(html_content, 'html.parser')
-                        #     img_tags = soup.find_all('img')
-                        #     for img in img_tags:
-                        #         img_url = img.get('src')
-                        #         print(img_url)
-
                 else:
                     # If the email is not multipart
                     body = msg.get_payload(decode=True).decode()

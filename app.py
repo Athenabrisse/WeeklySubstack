@@ -96,6 +96,7 @@ if 'title' not in st.session_state:
 # Bouton pour récupérer les emails et les traiter
 if st.button("Mail"):
     mails = get_email()
+    
     #st.write(mails)  # Optionnel : Afficher les mails récupérés pour le débogage
     
     # Traiter les mails et extraire le texte du corps
